@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5 mt-5 h-100 d-flex align-items-center justify-content-center">
+    <div class="col-lg-8 col-md-10">
+        <div class="card glass-card shadow-lg border-0 rounded-4 text-center p-5 result-card">
+            
+            {% if error %}
+            <div class="mb-4">
+                <div class="icon-circle bg-danger-subtle text-danger mx-auto mb-4">
+                    <i class="fa-solid fa-triangle-exclamation fa-3x"></i>
+                </div>
+                <h2 class="text-danger mb-3">Prediction Error</h2>
+                <p class="lead text-muted">{{ error }}</p>
+            </div>
+            {% else %}
+            <div class="mb-4">
+                <div class="icon-circle bg-success-subtle text-success mx-auto mb-4 scale-in">
+                    <i class="fa-solid fa-check fa-3x"></i>
+                </div>
+                <h2 class="fw-bold mb-1">Predicted Profit</h2>
+                <p class="text-muted mb-4">Based on your business investments</p>
+                
+                <h1 class="display-3 fw-bold text-gradient profit-value mb-4">
+                    $<span class="counter" data-target="{{ profit }}">{{ profit }}</span>
+                </h1>
+                
+                <div class="row justify-content-center g-3 mb-4 text-start">
+                    <div class="col-sm-5">
+                        <div class="p-3 bg-light rounded-3 d-flex align-items-center border subtle-border">
+                            <i class="fa-solid fa-robot text-primary fa-2x me-3"></i>
+                            <div>
+                                <small class="text-muted d-block">Model Used</small>
+                                <span class="fw-bold">{{ model_name }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-5">
+                        <div class="p-3 bg-light rounded-3 d-flex align-items-center border subtle-border">
+                            <i class="fa-regular fa-calendar-check text-primary fa-2x me-3"></i>
+                            <div>
+                                <small class="text-muted d-block">Prediction Date</small>
+                                <span class="fw-bold fs-7">{{ date }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            <div class="mt-4">
+                <a href="/" class="btn btn-primary btn-lg rounded-pill px-5 shadow-sm">
+                    <i class="fa-solid fa-arrow-left me-2"></i> Predict Again
+                </a>
+                {% if not error %}
+                <a href="/dashboard" class="btn btn-outline-secondary btn-lg rounded-pill px-4 ms-2">
+                    <i class="fa-solid fa-chart-pie me-2"></i> View Dashboard
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .icon-circle {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .scale-in {
+        animation: scaleIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+    @keyframes scaleIn {
+        0% { transform: scale(0); opacity: 0; }
+        100% { transform: scale(1); opacity: 1; }
+    }
+    .fs-7 { font-size: 0.85rem; }
+</style>
+{% endblock %}

@@ -1,0 +1,295 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5 mt-5">
+    <div class="d-flex justify-content-between align-items-end mb-4">
+        <div>
+            <h2 class="fw-bold mb-1"><i class="fa-solid fa-chart-pie text-primary me-2"></i> Analytics Dashboard</h2>
+            <p class="text-muted mb-0">Overview of your business profit predictions.</p>
+        </div>
+        <div>
+            <a href="/history" class="btn btn-outline-primary rounded-pill px-4 shadow-sm">
+                <i class="fa-solid fa-table me-2"></i> View Data Table
+            </a>
+        </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="row g-4 mb-5" id="kpi-container">
+        <!-- Injected via JS -->
+    </div>
+
+    <!-- Charts -->
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="card glass-card shadow-sm border-0 h-100 rounded-4">
+                <div class="card-body p-4">
+                    <h5 class="card-title fw-bold mb-4">Prediction History</h5>
+                    <div style="height: 350px;">
+                        <canvas id="historyChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card glass-card shadow-sm border-0 h-100 rounded-4">
+                <div class="card-body p-4">
+                    <h5 class="card-title fw-bold mb-4">Profit Distribution</h5>
+                    <div style="height: 350px;">
+                        <canvas id="distributionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Charts Row 2 -->
+    <div class="row g-4 mt-1">
+        <div class="col-lg-6">
+            <div class="card glass-card shadow-sm border-0 h-100 rounded-4">
+                <div class="card-body p-4">
+                    <h5 class="card-title fw-bold mb-4">Feature Importance</h5>
+                    <div style="height: 350px;">
+                        <canvas id="featureImportanceChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card glass-card shadow-sm border-0 h-100 rounded-4">
+                <div class="card-body p-4">
+                    <h5 class="card-title fw-bold mb-4">Actual vs Predicted (Test Set)</h5>
+                    <div style="height: 350px;">
+                        <canvas id="actualVsPredictedChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- New Charts Row 3 -->
+    <div class="row g-4 mt-1 mb-5">
+        <div class="col-12">
+            <div class="card glass-card shadow-sm border-0 rounded-4">
+                <div class="card-body p-4">
+                    <h5 class="card-title fw-bold mb-4">Correlation Heatmap</h5>
+                    <div id="heatmapChart" style="height: 450px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Template for KPIs (hidden) -->
+<template id="kpi-template">
+    <div class="col-md-3">
+        <div class="card stat-card shadow-sm border-0 rounded-4 h-100">
+            <div class="card-body p-4 text-center">
+                <div class="icon-box bg-primary-subtle text-primary mx-auto mb-3">
+                    <i class="kpi-icon fa-solid fa-2x"></i>
+                </div>
+                <h6 class="text-muted text-uppercase fw-semibold mb-1 kpi-title"></h6>
+                <h3 class="fw-bold mb-0 kpi-value"></h3>
+            </div>
+        </div>
+    </div>
+</template>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        fetch('/api/dashboard_data')
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'empty') {
+                    document.getElementById('kpi-container').innerHTML = '<div class="col-12"><div class="alert alert-info border-0 rounded-4 shadow-sm"><i class="fa-solid fa-circle-info me-2"></i> No prediction data available yet. <a href="/" class="alert-link">Make a prediction</a> to see analytics.</div></div>';
+                    return;
+                }
+
+                // Populate KPIs
+                const kpis = [
+                    { title: "Total Predictions", value: data.total_predictions, icon: "fa-hashtag" },
+                    { title: "Average Profit", value: "$" + data.average_profit.toLocaleString(), icon: "fa-chart-area" },
+                    { title: "Highest Profit", value: "$" + data.highest_profit.toLocaleString(), icon: "fa-arrow-trend-up" },
+                    { title: "Lowest Profit", value: "$" + data.lowest_profit.toLocaleString(), icon: "fa-arrow-trend-down" }
+                ];
+
+                const container = document.getElementById('kpi-container');
+                const template = document.getElementById('kpi-template');
+
+                kpis.forEach(kpi => {
+                    const clone = template.content.cloneNode(true);
+                    clone.querySelector('.kpi-title').textContent = kpi.title;
+                    clone.querySelector('.kpi-value').textContent = kpi.value;
+                    clone.querySelector('.kpi-icon').classList.add(kpi.icon);
+                    container.appendChild(clone);
+                });
+
+                // Chart configurations
+                const chartOptions = {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(0,0,0,0.05)' }
+                        },
+                        x: {
+                            grid: { display: false }
+                        }
+                    }
+                };
+
+                // History Chart
+                const ctxHistory = document.getElementById('historyChart').getContext('2d');
+                new Chart(ctxHistory, {
+                    type: 'line',
+                    data: {
+                        labels: data.history_dates,
+                        datasets: [{
+                            label: 'Predicted Profit',
+                            data: data.profit_data,
+                            borderColor: '#4361ee',
+                            backgroundColor: 'rgba(67, 97, 238, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            fill: true,
+                            pointBackgroundColor: '#4361ee'
+                        }]
+                    },
+                    options: chartOptions
+                });
+
+                // Distribution Chart (using Doughnut for demo, or histogram if binned)
+                // We'll just show a simplified doughnut of ranges
+                const profits = data.profit_data;
+                let low = 0, med = 0, high = 0;
+                const max = Math.max(...profits);
+                profits.forEach(p => {
+                    if(p < max*0.33) low++;
+                    else if(p < max*0.66) med++;
+                    else high++;
+                });
+
+                const ctxDist = document.getElementById('distributionChart').getContext('2d');
+                new Chart(ctxDist, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Low', 'Medium', 'High'],
+                        datasets: [{
+                            data: [low, med, high],
+                            backgroundColor: ['#f72585', '#7209b7', '#4361ee'],
+                            borderWidth: 0,
+                            hoverOffset: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom' }
+                        },
+                        cutout: '70%'
+                    }
+                });
+
+                // Feature Importance Chart
+                if (data.feature_importance) {
+                    const ctxFI = document.getElementById('featureImportanceChart').getContext('2d');
+                    new Chart(ctxFI, {
+                        type: 'bar',
+                        data: {
+                            labels: data.feature_importance.features,
+                            datasets: [{
+                                label: 'Importance Score',
+                                data: data.feature_importance.importances,
+                                backgroundColor: ['#4361ee', '#3a0ca3', '#7209b7', '#f72585'],
+                                borderRadius: 5
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                y: { beginAtZero: true }
+                            }
+                        }
+                    });
+                }
+
+                // Actual vs Predicted Chart
+                if (data.actual_vs_predicted) {
+                    const ctxAvsP = document.getElementById('actualVsPredictedChart').getContext('2d');
+                    
+                    const scatterData = [];
+                    for(let i=0; i<data.actual_vs_predicted.actual.length; i++) {
+                        scatterData.push({
+                            x: data.actual_vs_predicted.actual[i],
+                            y: data.actual_vs_predicted.predicted[i]
+                        });
+                    }
+                    
+                    const minVal = Math.min(...data.actual_vs_predicted.actual, ...data.actual_vs_predicted.predicted);
+                    const maxVal = Math.max(...data.actual_vs_predicted.actual, ...data.actual_vs_predicted.predicted);
+                    
+                    new Chart(ctxAvsP, {
+                        type: 'scatter',
+                        data: {
+                            datasets: [{
+                                label: 'Predictions',
+                                data: scatterData,
+                                backgroundColor: '#f72585',
+                                pointRadius: 5
+                            }, {
+                                type: 'line',
+                                label: 'Ideal (Actual = Predicted)',
+                                data: [{x: minVal, y: minVal}, {x: maxVal, y: maxVal}],
+                                borderColor: 'rgba(0,0,0,0.3)',
+                                borderDash: [5, 5],
+                                borderWidth: 2,
+                                pointRadius: 0,
+                                fill: false
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                x: { title: { display: true, text: 'Actual Profit' } },
+                                y: { title: { display: true, text: 'Predicted Profit' } }
+                            }
+                        }
+                    });
+                }
+
+                // Correlation Heatmap (Plotly)
+                if (data.correlation) {
+                    const heatData = [{
+                        z: data.correlation.values,
+                        x: data.correlation.labels,
+                        y: data.correlation.labels,
+                        type: 'heatmap',
+                        colorscale: 'Viridis',
+                        hoverongaps: false
+                    }];
+                    const heatLayout = {
+                        margin: { t: 20, l: 120, b: 80, r: 20 },
+                        paper_bgcolor: 'rgba(0,0,0,0)',
+                        plot_bgcolor: 'rgba(0,0,0,0)',
+                        font: { family: 'Inter, sans-serif' }
+                    };
+                    Plotly.newPlot('heatmapChart', heatData, heatLayout, {responsive: true});
+                }
+
+            })
+            .catch(error => console.error('Error fetching dashboard data:', error));
+    });
+</script>
+{% endblock %}

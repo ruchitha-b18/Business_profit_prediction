@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5 mt-5">
+    <div class="d-flex justify-content-between align-items-end mb-4">
+        <div>
+            <h2 class="fw-bold mb-1"><i class="fa-solid fa-history text-primary me-2"></i> Prediction History</h2>
+            <p class="text-muted mb-0">Record of all past profit predictions.</p>
+        </div>
+        <div>
+            <a href="/export_csv" class="btn btn-outline-secondary rounded-pill px-3 shadow-sm me-2" data-bs-toggle="tooltip" title="Export to CSV">
+                <i class="fa-solid fa-file-csv"></i> CSV
+            </a>
+            <a href="/export_pdf" class="btn btn-outline-danger rounded-pill px-3 shadow-sm" data-bs-toggle="tooltip" title="Download PDF Report">
+                <i class="fa-solid fa-file-pdf"></i> PDF
+            </a>
+        </div>
+    </div>
+
+    <div class="card glass-card shadow-sm border-0 rounded-4 overflow-hidden">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 custom-table">
+                    <thead class="bg-light">
+                        <tr>
+                            <th class="ps-4">ID</th>
+                            <th>Date</th>
+                            <th>R&D Spend</th>
+                            <th>Admin</th>
+                            <th>Marketing</th>
+                            <th>State</th>
+                            <th>Model</th>
+                            <th class="text-end pe-4">Predicted Profit</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if history %}
+                            {% for row in history %}
+                            <tr>
+                                <td class="ps-4 text-muted">#{{ row[0] }}</td>
+                                <td>
+                                    <span class="badge bg-secondary-subtle text-secondary rounded-pill">
+                                        <i class="fa-regular fa-clock me-1"></i>{{ row[6].split(' ')[0] }}
+                                    </span>
+                                </td>
+                                <td>${{ "{:,.2f}".format(row[1]) }}</td>
+                                <td>${{ "{:,.2f}".format(row[2]) }}</td>
+                                <td>${{ "{:,.2f}".format(row[3]) }}</td>
+                                <td><span class="badge bg-info-subtle text-info rounded-pill px-3">{{ row[4] }}</span></td>
+                                <td><small class="text-muted"><i class="fa-solid fa-robot me-1"></i>{{ row[7] }}</small></td>
+                                <td class="text-end pe-4 fw-bold text-success">${{ "{:,.2f}".format(row[5]) }}</td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="8" class="text-center py-5 text-muted">
+                                    <i class="fa-regular fa-folder-open fa-3x mb-3 text-light-muted"></i>
+                                    <h5>No history found</h5>
+                                    <p class="mb-0">Your predictions will appear here.</p>
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
